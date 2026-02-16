@@ -5,6 +5,10 @@ function cam_data = read_camera_data(filename)
     % Opening the file
     cam_file = fopen(filename, "r");
 
+    if cam_file == -1
+        error('Cannot open file: %s', filename);
+    end
+
     % Skipping the header line "camera matrix:"
     fgetl(cam_file);
 
