@@ -35,14 +35,16 @@ if isKey(meas_data_db, 6)
     fprintf('\nChecking Point ID #6\n');
     fprintf('\tObserved in %d frames.\n', pt.count);
     
-    first_obs = pt.observations{1};
+    obs = pt.observations{1};
     fprintf('\tFirst obs: Frame %d at pixels [%.2f, %.2f]\n', ...
-            first_obs.seq_num, first_obs.uv(1), first_obs.uv(2));
-    fprintf('\tRobot Odom at that time: [%.4f, %.4f, %.4f]\n', first_obs.odom_pose);
+            obs.seq_num, obs.uv(1), obs.uv(2));
+    fprintf('\tRobot Odom at that time: [%.4f, %.4f, %.4f]\n', obs.odom_pose);
 
-    first_obs = pt.observations{pt.count};
+    obs = pt.observations{pt.count};
     fprintf('\tLast obs: Frame %d at pixels [%.2f, %.2f]\n', ...
-            first_obs.seq_num, first_obs.uv(1), first_obs.uv(2));
-    fprintf('\tRobot Odom at that time: [%.4f, %.4f, %.4f]\n', first_obs.odom_pose);
+            obs.seq_num, obs.uv(1), obs.uv(2));
+    fprintf('\tRobot Odom at that time: [%.4f, %.4f, %.4f]\n', obs.odom_pose);
 
 end
+
+
