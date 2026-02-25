@@ -14,22 +14,8 @@ traj_data = read_traj_data("data/trajectory.dat");
 %pause;
 
 meas_data_db = new_read_meas_data("data");
-% Testing correctness
 
-% for frame_idx = 1:3
-%     frame = meas_data{frame_idx};
-%     fprintf('Sequence num:\t %d \n', frame.id);
-%     fprintf('Odometry:\t [%.6f, %.6f, %.6f]\n', frame.odom_pose);
-%     fprintf('GroundTruth:\t [%.6f, %.6f, %.6f]\n', frame.gt_pose);
-%     if ~isempty(frame.point_ids)
-%         fprintf('ID=%d | u=%.3f | v=%.3f \n\n', ...
-%             frame.point_ids(1), frame.observations(1,1), frame.observations(1,2));
-%     else
-%         warning('Frame %d has no features\n', frame_idx);
-%     end
-% end
-
-% Verify a specific point (e.g. Point #6)
+% Testing correctness: Verify a specific point (e.g. Point #6)
 if isKey(meas_data_db, 6)
     pt = meas_data_db(6);
     fprintf('\nChecking Point ID #6\n');
@@ -48,3 +34,122 @@ if isKey(meas_data_db, 6)
 end
 
 
+world_gt_map = read_world_data("data/world.dat");
+
+
+disp("Triangulating Points - method 1");
+map_estimate = triangulate1(meas_data_db, cam_data.T, cam_data.K);
+
+
+%%%%%%%%%%%%%
+% EVALUATION
+%%%%%%%%%%%%%
+disp("Evaluating Map Quality");
+
+
+% We want to compute the whole RMSE
+
+
+squared_error_sum = 0;
+count_evaluated = 0;
+
+estimated_ids = cell2mat(keys(map_estimate));
+gt_points = [];
+est_points = [];
+
+for i = 1:length(estimated_ids)
+    id = estimated_ids(i);
+    
+    % Only evaluate if we have ground truth for this ID
+    if isKey(world_gt_map, id)
+        p_est = map_estimate(id);
+        p_gt = world_gt_map(id);
+
+        if isempty(p_est)
+            continue;
+        end
+        
+        % Accumulate error
+        diff = p_est - p_gt;
+        squared_error_sum = squared_error_sum + sum(diff.^2);
+        count_evaluated = count_evaluated + 1;
+        
+        % Store for plotting
+        gt_points(:, end+1) = p_gt;
+        est_points(:, end+1) = p_est;
+    end
+end
+
+if count_evaluated > 0
+    rmse = sqrt(squared_error_sum / count_evaluated);
+    fprintf('\n');
+    fprintf('Map RMSE: %.4f meters\n', rmse);
+    fprintf('Evaluated %d points.\n', count_evaluated);
+else
+    warning('No overlapping points found between Estimate and GT!');
+end
+
+%%%%%%%%%%
+% Visualization 
+%%%%%%%%%%
+
+draw_3D_points(est_points, gt_points, rmse);
+
+
+
+%%%%%%%%%%%%%
+% EVALUATION - Triang 2
+%%%%%%%%%%%%%
+disp("Triangulating Points - method 2");
+map_estimate = triangulate2(meas_data_db, cam_data.T, cam_data.K);
+
+disp("Evaluating Map Quality");
+
+
+% We want to compute the whole RMSE
+
+
+squared_error_sum = 0;
+count_evaluated = 0;
+
+estimated_ids = cell2mat(keys(map_estimate));
+gt_points = [];
+est_points = [];
+
+for i = 1:length(estimated_ids)
+    id = estimated_ids(i);
+    
+    % Only evaluate if we have ground truth for this ID
+    if isKey(world_gt_map, id)
+        p_est = map_estimate(id);
+        p_gt = world_gt_map(id);
+
+        if isempty(p_est)
+            continue;
+        end
+        
+        % Accumulate error
+        diff = p_est - p_gt;
+        squared_error_sum = squared_error_sum + sum(diff.^2);
+        count_evaluated = count_evaluated + 1;
+        
+        % Store for plotting
+        gt_points(:, end+1) = p_gt;
+        est_points(:, end+1) = p_est;
+    end
+end
+
+if count_evaluated > 0
+    rmse = sqrt(squared_error_sum / count_evaluated);
+    fprintf('\n');
+    fprintf('Map RMSE: %.4f meters\n', rmse);
+    fprintf('Evaluated %d points.\n', count_evaluated);
+else
+    warning('No overlapping points found between Estimate and GT!');
+end
+
+%%%%%%%%%%
+% Visualization 
+%%%%%%%%%%
+
+draw_3D_points(est_points, gt_points, rmse);

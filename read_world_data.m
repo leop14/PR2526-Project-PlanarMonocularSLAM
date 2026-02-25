@@ -1,5 +1,5 @@
 
-function world_gt = read_world(filepath)
+function world_gt = read_world_data(filepath)
     
     world_file = fopen(filepath, 'r');
     if world_file == -1
