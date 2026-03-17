@@ -1,7 +1,7 @@
 # bookeeping of the indices
 # dimensions
 
-%(minimal) size of pose and landmarks
+% (minimal) size of pose and landmarks
 global pose_dim = 3;    % x, y, theta
 global landmark_dim = 3;  % x, y, z
 
@@ -23,10 +23,10 @@ function v_idx = poseMatrixIndex(pose_index, num_poses, num_landmarks)
   global landmark_dim;
 
   if (pose_index>num_poses)
-    v_idx=-1;
+    v_idx = -1;
     return;
   endif;
-  v_idx=1+(pose_index-1)*pose_dim;
+  v_idx = 1+(pose_index-1)*pose_dim;
 endfunction;
 
 # retrieves the index in the perturbation vector, that corresponds to
