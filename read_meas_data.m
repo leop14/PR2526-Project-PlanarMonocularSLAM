@@ -1,5 +1,5 @@
 
-function read_meas = read_meas_data(meas_dir)
+function measurements = read_meas_data(meas_dir)
 
     % Getting the list of measurements files
     pattern = fullfile(meas_dir, "meas-*.dat");
@@ -79,7 +79,6 @@ function read_meas = read_meas_data(meas_dir)
 
     end
     
-    read_meas = measurements;
     fprintf('\nMeasurements Loaded\n');
 
     %measurements
