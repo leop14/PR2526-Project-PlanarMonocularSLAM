@@ -162,39 +162,53 @@ end
 draw_3D_points(est_points, gt_points, rmse);
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% BUNDLE ADJUSTMENT
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+addpath("BundleAdjustment");
 
+disp('');
+disp('=== Bundle Adjustment ===');
 
+% Prepare solver arrays from triangulate2 result
+[XR_guess, XL_guess, Zr, pose_associations, Zp, projection_associations, ...
+ landmark_ids_array, num_poses, num_landmarks] = ...
+    prepare_solver_data(map_estimate, traj_data, meas_data_db);
 
-%%%%%%%%%%%%
-% Preparing Bundle Adjustment
-%%%%%%%%%%%%
-disp("Preparing data for Bundle Adjustment (Total Least Squares)");
-[XR_guess, XL_guess, Zr, pose_associations, Zp, projection_associations, landmark_ids_array, num_poses, num_landmarks] = prepare_solver_data(map_estimate, traj_data, meas_data_db);
+% Initial evaluation (odometry + triangulated map)
+disp('--- Initial trajectory (odometry) ---');
+evaluate_traj(XR_guess, traj_data);
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% RUNNING Bundle Adjustment
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-disp("Running Bundle Adjustment");
+disp('--- Initial map (triangulation 2) ---');
+[rmse_map_initial, est_pts_initial, gt_pts_initial] = ...
+    evaluate_map(XL_guess, landmark_ids_array, world_gt_map);
 
-% We don't have direct landmark measurements, so Zl is empty
-Zl = zeros(3,0); 
-landmark_associations = zeros(2,0);
+% Run Gauss-Newton BA
+num_iterations   = 20;
+kernel_threshold = 1000;  % pixels^2
 
-damping = 0.1;
-kernel_threshold = 100;
-num_iterations = 10; 
-
-[XR_opt, XL_opt, chi_stats_l, num_inliers_l, chi_stats_p, num_inliers_p, chi_stats_r, num_inliers_r, H, b] = doTotalLS(...
-    XR_guess, XL_guess, ...
-    Zl, landmark_associations, ...
-    Zp, projection_associations, ...
-    Zr, pose_associations, ...
-    num_poses, num_landmarks, num_iterations, damping, kernel_threshold, ...
+disp('Running Bundle Adjustment');
+[XR_opt, XL_opt, chi_stats, num_inliers_stats] = bundle_adjustment( ...
+    XR_guess, XL_guess, Zp, projection_associations, num_poses, num_landmarks, ...
+    num_iterations, kernel_threshold, ...
     cam_data.width, cam_data.height, cam_data.K, cam_data.T);
 
-disp("Bundle Adjustment Completed");
+% Final evaluation
+disp('');
+disp('--- Final trajectory (after BA) ---');
+evaluate_traj(XR_opt, traj_data);
 
+disp('--- Final map (after BA) ---');
+[rmse_map_ba, est_pts_ba, gt_pts_ba] = ...
+    evaluate_map(XL_opt, landmark_ids_array, world_gt_map);
 
-%%%%%%%%%%%%%%%%%%
-% Evaluation
-%%%%%%%%%%%%%%%%%%
+draw_3D_points(est_pts_ba, gt_pts_ba, rmse_map_ba);
+
+% Convergence plot
+figure;
+subplot(2,1,1);
+plot(1:num_iterations, chi_stats, 'b-o', 'LineWidth', 1.5);
+xlabel('Iteration'); ylabel('chi2'); title('BA convergence: chi2'); grid on;
+subplot(2,1,2);
+plot(1:num_iterations, num_inliers_stats, 'r-o', 'LineWidth', 1.5);
+xlabel('Iteration'); ylabel('Inliers'); title('BA convergence: inliers'); grid on;

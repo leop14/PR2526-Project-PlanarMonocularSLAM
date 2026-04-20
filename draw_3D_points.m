@@ -32,10 +32,16 @@ function draw_3D_points(est_points, gt_points, rmse)
         legend([h_gt, h_est], 'Ground Truth', 'Estimated', 'Location', 'northwest');
     end
 
-    % Save figure to file 
+    % Save figure to file
+    if ~exist('figures', 'dir')
+        mkdir('figures');
+    end
     filename = sprintf('figures/map_comparison_rmse%.3f.png', rmse);
-    print(gcf, filename, '-dpng', '-r150');
-    fprintf('Figure saved to: %s\n', filename);
+    try
+        print(gcf, filename, '-dpng', '-r150');
+        fprintf('Figure saved to: %s\n', filename);
+    catch err
+        fprintf('Warning: could not save figure (%s)\n', err.message);
+    end
 
-    disp('Visualization open. Press any key to exit');
-    pause;
+    drawnow;
