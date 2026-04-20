@@ -32,5 +32,10 @@ function draw_3D_points(est_points, gt_points, rmse)
         legend([h_gt, h_est], 'Ground Truth', 'Estimated', 'Location', 'northwest');
     end
 
+    % Save figure to file 
+    filename = sprintf('figures/map_comparison_rmse%.3f.png', rmse);
+    print(gcf, filename, '-dpng', '-r150');
+    fprintf('Figure saved to: %s\n', filename);
+
     disp('Visualization open. Press any key to exit');
     pause;

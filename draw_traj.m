@@ -34,6 +34,10 @@ function draw_traj(traj_data)
 
     % Force Draw - This ensures the graphic processes before the script ends/crashes
     drawnow;
-    
+
+    % Save figure to file
+    print(gcf, 'figures/trajectory.png', '-dpng', '-r150');
+    fprintf('Figure saved to: figures/trajectory.png\n');
+
     hold off;
 end

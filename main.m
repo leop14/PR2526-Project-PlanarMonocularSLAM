@@ -2,6 +2,10 @@ close all
 clear
 clc 
 
+addpath("data_read");
+addpath("BundleAdjustment");
+
+graphics_toolkit("qt");
 
 cam_data = read_camera_data("data/camera.dat");
 
@@ -40,15 +44,9 @@ world_gt_map = read_world_data("data/world.dat");
 disp("Triangulating Points - method 1");
 map_estimate = triangulate1(meas_data_db, cam_data.T, cam_data.K);
 
-
-%%%%%%%%%%%%%
-% EVALUATION
-%%%%%%%%%%%%%
 disp("Evaluating Map Quality");
 
-
 % We want to compute the whole RMSE
-
 
 squared_error_sum = 0;
 count_evaluated = 0;
@@ -98,17 +96,26 @@ draw_3D_points(est_points, gt_points, rmse);
 
 
 %%%%%%%%%%%%%
-% EVALUATION - Triang 2
+% Triang 2
 %%%%%%%%%%%%%
 disp("Triangulating Points - method 2");
 map_estimate = triangulate2(meas_data_db, cam_data.T, cam_data.K);
 
-disp("Evaluating Map Quality");
+disp("Preparing arrays for evaluation and solver...");
+[XR_guess, XL_guess, Zr, pose_associations, Zp, projection_associations, landmark_ids_array, num_poses, num_landmarks] = ...
+     prepare_solver_data(map_estimate, traj_data, meas_data_db);
+
+disp("--- INITIAL TRAJECTORY (NEW) EVALUATION ---");
+[trans_rmse_initial, rot_rmse_initial] = evaluate_traj(XR_guess, traj_data);
+
+disp("\n--- INITIAL MAP EVALUATION (NEW) ---");
+[map_rmse_initial, est_pts_initial, gt_pts_initial] = ...
+             evaluate_map(XL_guess, landmark_ids_array, world_gt_map);
 
 
+
+disp("\n\nEvaluating Map Quality (OLD)");
 % We want to compute the whole RMSE
-
-
 squared_error_sum = 0;
 count_evaluated = 0;
 
@@ -153,3 +160,41 @@ end
 %%%%%%%%%%
 
 draw_3D_points(est_points, gt_points, rmse);
+
+
+
+
+
+%%%%%%%%%%%%
+% Preparing Bundle Adjustment
+%%%%%%%%%%%%
+disp("Preparing data for Bundle Adjustment (Total Least Squares)");
+[XR_guess, XL_guess, Zr, pose_associations, Zp, projection_associations, landmark_ids_array, num_poses, num_landmarks] = prepare_solver_data(map_estimate, traj_data, meas_data_db);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% RUNNING Bundle Adjustment
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+disp("Running Bundle Adjustment");
+
+% We don't have direct landmark measurements, so Zl is empty
+Zl = zeros(3,0); 
+landmark_associations = zeros(2,0);
+
+damping = 0.1;
+kernel_threshold = 100;
+num_iterations = 10; 
+
+[XR_opt, XL_opt, chi_stats_l, num_inliers_l, chi_stats_p, num_inliers_p, chi_stats_r, num_inliers_r, H, b] = doTotalLS(...
+    XR_guess, XL_guess, ...
+    Zl, landmark_associations, ...
+    Zp, projection_associations, ...
+    Zr, pose_associations, ...
+    num_poses, num_landmarks, num_iterations, damping, kernel_threshold, ...
+    cam_data.width, cam_data.height, cam_data.K, cam_data.T);
+
+disp("Bundle Adjustment Completed");
+
+
+%%%%%%%%%%%%%%%%%%
+% Evaluation
+%%%%%%%%%%%%%%%%%%
