@@ -1,6 +1,6 @@
 # Assembly of the projection problem
-# source "../tools/utilities/geometry_helpers_3d.m"
-source "./total_ls_indices.m"
+# Note: total_ls_indices.m must be sourced before this file
+# (done in bundle_adjustment.m)
 
 
 # dimension of projection
@@ -8,7 +8,7 @@ global projection_dim=2;
 
 
 # projects a point
-function p_img = projectPoint(Xr, Xl, img_width, img_hight, K)
+function p_img = projectPoint(Xr, Xl, img_width, img_height, K)
     iXr = inv(Xr);
     p_img = [-1;-1];
     pw = iXr(1:3,1:3)*Xl + iXr(1:3,4);
@@ -19,7 +19,7 @@ function p_img = projectPoint(Xr, Xl, img_width, img_hight, K)
     iz = 1./p_cam(3);
     p_cam *= iz;
     if (p_cam(1) < 0 || p_cam(1) > img_width ||
-        p_cam(2) < 0 || p_cam(2) > img_hight)
+        p_cam(2) < 0 || p_cam(2) > img_height)
         return;
     endif;
     p_img = p_cam(1:2);
@@ -36,14 +36,14 @@ endfunction
 #   Jl: 2x3 derivative w.r.t the error and a perturbation on the landmark
 #   is_valid: true if projection ok
 
-function [is_valid, e, Jr, Jl] = projectionErrorAndJacobian(T_rob_world, p_land_world, z, img_width, img_hight, K, T_cam_rob)
+function [is_valid, e, Jr, Jl] = projectionErrorAndJacobian(T_rob_world, p_land_world, z, img_width, img_height, K, T_cam_rob)
     is_valid = false;
     e = [0;0];
     Jr = zeros(2,3);
     Jl = zeros(2,3);
     
     # Calculating full camera pose in the world
-    T_cam_world = T_rob_world * T_cam_rob
+    T_cam_world = T_rob_world * T_cam_rob;
     iRc = T_cam_world(1:3,1:3)';
     itc = -iRc * T_cam_world(1:3,4);
 
@@ -125,7 +125,7 @@ function [H, b, chi_tot, num_inliers] = linearizeProjections(XR, XL, Zl, associa
         T_rob_world = XR(:, :, pose_index);
         p_land_world = XL(:, landmark_index);
 
-        [is_valid, e, Jr, Jl] = projectionErrorAndJacobian(Xr, Xl, z, img_width, img_height, K, T_cam_rob);
+        [is_valid, e, Jr, Jl] = projectionErrorAndJacobian(T_rob_world, p_land_world, z, img_width, img_height, K, T_cam_rob);
         
         if (! is_valid)
             continue;

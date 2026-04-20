@@ -2,12 +2,11 @@ function [XR, XL, chi_stats, num_inliers_stats] = bundle_adjustment( ...
     XR, XL, Zl, associations, num_poses, num_landmarks, ...
     num_iterations, kernel_threshold, img_width, img_height, K, T_cam_rob)
 
-    source("BundleAdjustment/total_ls_indices.m");
-    source("BundleAdjustment/total_ls_projection.m");
-    source("BundleAdjustment/boxPlus.m");
+    addpath("BundleAdjustment");
 
-    global pose_dim;
-    global landmark_dim;
+    global pose_dim = 3;
+    global landmark_dim = 3;
+    global projection_dim = 2;
 
     chi_stats = zeros(1, num_iterations);
     num_inliers_stats = zeros(1, num_iterations);
