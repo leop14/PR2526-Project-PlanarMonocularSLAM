@@ -23,7 +23,7 @@ function [XR, XL] = boxPlus(XR, XL, num_poses, num_landmarks, dx)
         dX = v2t(dxr);
             
         # Apply the perturbation to the pose
-        XR(:,:,pose_index) = dX * XR(:,:,pose_index);
+        XR(:,:,pose_index) = XR(:,:,pose_index) * dX;
     endfor;
     
     # Update Landmarks

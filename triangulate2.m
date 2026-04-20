@@ -21,8 +21,10 @@ function world_map = triangulate2(meas_db, T_camera_robot, K)
         % Perform triangulation on the current point
         x_world = single_point_triangulation(point_struct, T_camera_robot, K);
 
-        % Store the result (Euclidean 3D point)
-        world_map(point_id) = x_world;
+        % Store the result (Euclidean 3D point), skip invalid points
+        if ~isempty(x_world)
+            world_map(point_id) = x_world;
+        end
     end
     
     fprintf('Triangulation complete. %d points have been mapped.\n', length(world_map));
