@@ -5,7 +5,10 @@ clc
 addpath("data_read");
 addpath("BundleAdjustment");
 
-graphics_toolkit("qt");
+% "qt" renders via OpenGL/libGL, which has no GPU to talk to under WSL and
+% silently produces empty figures. "gnuplot" renders straight to file
+% without touching libGL/X11, so figure saving works headless.
+graphics_toolkit("gnuplot");
 
 cam_data = read_camera_data("data/camera.dat");
 
