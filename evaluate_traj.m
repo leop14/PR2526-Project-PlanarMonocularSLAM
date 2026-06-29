@@ -1,5 +1,4 @@
 function [rmse_translation, rmse_rotation] = evaluate_traj(XR_est, traj_data)
-    source("geometry_helpers.m");
     % Evaluates the estimated trajectory against the ground truth
     % using relative SE(2) pose errors.
 

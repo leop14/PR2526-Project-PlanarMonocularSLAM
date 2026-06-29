@@ -1,5 +1,5 @@
 function [XR_guess, XL_guess, Zr, pose_associations, Zp, projection_associations, landmark_ids, num_poses, num_landmarks] = prepare_solver_data(world_map, traj_data, meas_db)
-    
+
     % Building XL_guess and the ID Lookup Table 
     % by extracting the triangulated landmarks
     landmark_ids = cell2mat(keys(world_map));
@@ -70,17 +70,4 @@ function [XR_guess, XL_guess, Zr, pose_associations, Zp, projection_associations
 
     Zp = Zp_list;
     projection_associations = proj_assoc_list;
-end
-
-% Helper function (Make sure this matches the one you use elsewhere!)
-function T = v2t(pose)
-    tx = pose(1);
-    ty = pose(2);
-    theta = pose(3);
-    c = cos(theta);
-    s = sin(theta);
-    T = [c, -s, 0, tx;
-         s,  c, 0, ty;
-         0,  0, 1, 0;
-         0,  0, 0, 1];
 end

@@ -55,17 +55,3 @@ function [H, b, chi_tot, num_inliers] = linearizePoses(XR, XL, Zr, associations,
         b(pose_j_matrix_index:pose_j_matrix_index+pose_dim-1) += Jj_w'*e_w;
     endfor
 endfunction
-
-function T = v2t(pose)
-    tx = pose(1);
-    ty = pose(2);
-    theta = pose(3);
-
-    c = cos(theta);
-    s = sin(theta);
-
-    T = [c, -s, 0, tx;
-         s,  c, 0, ty;
-         0,  0, 1, 0;
-         0,  0, 0, 1];
-endfunction

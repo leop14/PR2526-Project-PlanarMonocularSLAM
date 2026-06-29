@@ -13,9 +13,7 @@ cam_data = read_camera_data("data/camera.dat");
 traj_data = read_traj_data("data/trajectory.dat");
 
 
-%draw_traj(traj_data);
-%disp("Map displayed. Press any key to close and exit");
-%pause;
+draw_traj(traj_data, [], 'trajectory_initial');
 
 meas_data_db = new_read_meas_data("data");
 
@@ -200,6 +198,7 @@ disp('Running Bundle Adjustment');
 disp('');
 disp('--- Final trajectory (after BA) ---');
 evaluate_traj(XR_opt, traj_data);
+draw_traj(traj_data, XR_opt, 'trajectory_final');
 
 disp('--- Final map (after BA) ---');
 [rmse_map_ba, est_pts_ba, gt_pts_ba] = ...

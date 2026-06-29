@@ -91,22 +91,6 @@ function P = get_projection_matrix(obs, T_camera_robot, K)
     T_robot_world = v2t(obs.odom_pose);
     T_camera_world = T_robot_world * T_camera_robot;
     T_world_camera = inv(T_camera_world); % The view matrix
-    
+
     P = K * T_world_camera(1:3, :);
-end
-
-function T = v2t(pose)
-    % Converts [x, y, theta] to a 4x4 homogeneous matrix
-    tx = pose(1);
-    ty = pose(2);
-    theta = pose(3);
-
-    c = cos(theta);
-    s = sin(theta);
-
-    % 4x4 Matrix (Planar motion z=0)
-    T = [c, -s, 0, tx;
-         s,  c, 0, ty;
-         0,  0, 1, 0;
-         0,  0, 0, 1];
 end

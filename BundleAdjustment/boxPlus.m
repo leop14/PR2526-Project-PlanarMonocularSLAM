@@ -11,9 +11,9 @@
 #   XL: the landmarks obtained by applying the perturbation
 
 function [XR, XL] = boxPlus(XR, XL, num_poses, num_landmarks, dx)
-    global pose_dim;      
-    global landmark_dim;  
-    
+    global pose_dim;
+    global landmark_dim;
+
     # Update Poses
     for(pose_index = 1:num_poses)
         pose_matrix_index = poseMatrixIndex(pose_index, num_poses, num_landmarks);
@@ -35,21 +35,3 @@ function [XR, XL] = boxPlus(XR, XL, num_poses, num_landmarks, dx)
         XL(:,landmark_index) += dxl;
     endfor;
 endfunction;
-
-
-
-function T = v2t(pose)
-    % Converts [x, y, theta] to a 4x4 homogeneous matrix
-    tx = pose(1);
-    ty = pose(2);
-    theta = pose(3);
-
-    c = cos(theta);
-    s = sin(theta);
-
-    % 4x4 Matrix (Planar motion z=0)
-    T = [c, -s, 0, tx;
-         s,  c, 0, ty;
-         0,  0, 1, 0;
-         0,  0, 0, 1];
-end
