@@ -184,13 +184,16 @@ disp('--- Initial map (triangulation 2) ---');
     evaluate_map(XL_guess, landmark_ids_array, world_gt_map);
 
 % Run Gauss-Newton BA
-num_iterations   = 20;
-kernel_threshold = 1000;  % pixels^2
+num_iterations        = 30;
+kernel_threshold_proj = 1000;   % pixels^2
+kernel_threshold_pose = 1.0;    % flattened-matrix units
+pose_weight           = 1000;   % information weight on odometry term vs projection term
 
 disp('Running Bundle Adjustment');
 [XR_opt, XL_opt, chi_stats, num_inliers_stats] = bundle_adjustment( ...
-    XR_guess, XL_guess, Zp, projection_associations, num_poses, num_landmarks, ...
-    num_iterations, kernel_threshold, ...
+    XR_guess, XL_guess, Zp, projection_associations, Zr, pose_associations, ...
+    num_poses, num_landmarks, ...
+    num_iterations, kernel_threshold_proj, kernel_threshold_pose, pose_weight, ...
     cam_data.width, cam_data.height, cam_data.K, cam_data.T);
 
 % Final evaluation
