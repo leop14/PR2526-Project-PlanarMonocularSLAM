@@ -43,7 +43,7 @@ world_gt_map = read_world_data("data/world.dat");
 
 
 disp("Triangulating Points - method 1");
-map_estimate = triangulate1(meas_data_db, cam_data.T, cam_data.K);
+map_estimate = triangulate1(meas_data_db, cam_data.T, cam_data.K, cam_data.z_near, cam_data.z_far);
 
 disp("Evaluating Map Quality");
 
@@ -100,7 +100,7 @@ draw_3D_points(est_points, gt_points, rmse);
 % Triang 2
 %%%%%%%%%%%%%
 disp("Triangulating Points - method 2");
-map_estimate = triangulate2(meas_data_db, cam_data.T, cam_data.K);
+map_estimate = triangulate2(meas_data_db, cam_data.T, cam_data.K, cam_data.z_near, cam_data.z_far);
 
 disp("Preparing arrays for evaluation and solver...");
 [XR_guess, XL_guess, Zr, pose_associations, Zp, projection_associations, landmark_ids_array, num_poses, num_landmarks] = ...
