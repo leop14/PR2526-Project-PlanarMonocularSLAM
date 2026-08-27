@@ -1,86 +1,94 @@
 
-function world_map = triangulate2(meas_db, T_camera_robot, K)
+function world_map = triangulate2(meas_db, T_camera_robot, K, z_near, z_far)
+    % Multi-view pairwise triangulation (all-pairs averaging).
+    % Tries every (i, j) pair of observations for each landmark.
+    % Each pair is solved independently with SVD-DLT; pairs whose triangulated
+    % point falls outside [z_near, z_far) in either camera, or further than
+    % 50 m from the world XY origin, are discarded.  Valid pair estimates are
+    % averaged.  Using all pairs rather than only consecutive frames gives
+    % large-baseline combinations that are much better conditioned, which is
+    % what the reference implementation does.
 
-    % Initializing the output map (ID -> [x; y; z])
     world_map = containers.Map('KeyType', 'int32', 'ValueType', 'any');
-
-    % Getting all keys (i.e. Landmark IDs) from the database
     landmark_ids = cell2mat(keys(meas_db));
 
-    fprintf('Triangulating %d points.\n', length(landmark_ids));
-
     num_points = length(landmark_ids);
-    for i = 1:num_points     % Iteration over all the points
-        point_id = landmark_ids(i);
+    fprintf('Triangulating %d points (all-pairs pairwise).\n', num_points);
+
+    for i = 1:num_points
+        point_id     = landmark_ids(i);
         point_struct = meas_db(point_id);
 
         if point_struct.count < 2
             continue;
         end
-        
-        % Perform triangulation on the current point
-        x_world = single_point_triangulation(point_struct, T_camera_robot, K);
 
-        % Store the result (Euclidean 3D point), skip invalid points
-        if ~isempty(x_world)
-            world_map(point_id) = x_world;
+        candidates = [];
+        n_obs = point_struct.count;
+
+        % Precompute projection matrices once per observation (not per pair).
+        P_cache = cell(n_obs, 1);
+        for k = 1:n_obs
+            P_cache{k} = projection_matrix(point_struct.observations{k}, T_camera_robot, K);
+        end
+
+        for a = 1:(n_obs - 1)
+            for b = (a + 1):n_obs
+                obs_a = point_struct.observations{a};
+                obs_b = point_struct.observations{b};
+
+                X = triangulate_pair(P_cache{a}, obs_a.uv, P_cache{b}, obs_b.uv, z_near, z_far);
+
+                if ~isempty(X)
+                    candidates(:, end+1) = X;
+                end
+            end
+        end
+
+        if ~isempty(candidates)
+            world_map(point_id) = mean(candidates, 2);
         end
     end
-    
-    fprintf('Triangulation complete. %d points have been mapped.\n', length(world_map));
+
+    num_mapped = length(world_map);
+    fprintf('Triangulation complete. %d points have been mapped.\n', num_mapped);
+    fprintf('Landmarks Estimated: %.2f%% (%d / %d)\n', 100 * num_mapped / num_points, num_mapped, num_points);
 end
 
 
 
-function x_world = single_point_triangulation(point_struct, T_camera_robot, K)
-    n_frames = point_struct.count;
+function X = triangulate_pair(P1, uv1, P2, uv2, z_near, z_far)
+    u1 = uv1(1); v1 = uv1(2);
+    u2 = uv2(1); v2 = uv2(2);
 
-    % Initializing Matrix A for the linear system A*x = 0
-    A = zeros(2 * n_frames, 4);
-    % Each frame provides 2 equations, so A is (2*N x 4)
+    A = [u1*P1(3,:) - P1(1,:);
+         v1*P1(3,:) - P1(2,:);
+         u2*P2(3,:) - P2(1,:);
+         v2*P2(3,:) - P2(2,:)];
 
-    for frame = 1:n_frames
-        frame_obs = point_struct.observations{frame};
-        frame_odom_pose = frame_obs.odom_pose;
-        T_robot_world = v2t(frame_odom_pose);
-
-        T_camera_world = T_robot_world * T_camera_robot;
-        T_world_camera = inv(T_camera_world);
-
-        % Building Projection Matrix P (3x4)
-        % P = K * [R | t], with R and t extracted from "T_world_camera"
-        P = K * T_world_camera(1:3, :);
-
-        % Formulating triangulation equations
-        u = frame_obs.uv(1);
-        v = frame_obs.uv(2);    
-
-        row_idx = 2 * frame - 1;
-        
-        % Row 1: x-coordinate constraint
-        A(row_idx, :)     = u * P(3, :) - P(1, :);
-        
-        % Row 2: y-coordinate constraint
-        A(row_idx + 1, :) = v * P(3, :) - P(2, :);    
-    end
-
-    % Solve SVD (Total Least Squares)
-    % We want the vector x that minimizes ||Ax|| subject to ||x||=1
     [~, ~, V] = svd(A);
-    
-    % The solution is the eigenvector corresponding to the smallest eigenvalue
-    % This is the LAST column of V
-    x_hom = V(:, end);
-    
-    % De-homogenize (Convert from [x,y,z,w] to [x,y,z])
-    x_world = x_hom(1:3) / x_hom(4);
+    X_hom = V(:, end);
+    X = X_hom(1:3) / X_hom(4);
 
-    % Verify it is in front of at least the first camera
-    X_cam_check = T_world_camera * [x_world; 1];
-    if X_cam_check(3) <= 0
-        x_world = [];  % Handling invalid point (options: NaN or empty)
+    % Depth filter: both cameras must see the point in [z_near, z_far).
+    % Use the de-homogenized X to avoid sign ambiguity on X_hom.
+    d1 = P1(3, 1:3) * X + P1(3, 4);
+    d2 = P2(3, 1:3) * X + P2(3, 4);
+    if d1 < z_near || d1 >= z_far || d2 < z_near || d2 >= z_far
+        X = [];
+        return;
+    end
+
+    % XY outlier rejection.
+    if norm(X(1:2)) > 50
+        X = [];
     end
 end
 
 
 
+function P = projection_matrix(obs, T_camera_robot, K)
+    T_cam_world  = v2t(obs.odom_pose) * T_camera_robot; % camera-to-world
+    T_world_cam  = inv(T_cam_world);                     % world-to-camera
+    P = K * T_world_cam(1:3, :);
+end
