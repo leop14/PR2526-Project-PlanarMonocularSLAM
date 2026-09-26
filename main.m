@@ -1,6 +1,6 @@
-close all 
+close all
 clear
-clc 
+clc
 
 addpath("data_read");
 addpath("BundleAdjustment");
@@ -10,210 +10,224 @@ addpath("BundleAdjustment");
 % without touching libGL/X11, so figure saving works headless.
 graphics_toolkit("gnuplot");
 
-cam_data = read_camera_data("data/camera.dat");
+cam_data    = read_camera_data("data/camera.dat");
+traj_data   = read_traj_data("data/trajectory.dat");
+draw_traj(traj_data, [], 'trajectory_odometry');
+meas_data_db = read_meas_data("data");
 
-
-traj_data = read_traj_data("data/trajectory.dat");
-
-
-draw_traj(traj_data, [], 'trajectory_initial');
-
-meas_data_db = new_read_meas_data("data");
-
-% Testing correctness: Verify a specific point (e.g. Point #6)
+% Spot-check: verify a specific point is read correctly
 if isKey(meas_data_db, 6)
     pt = meas_data_db(6);
     fprintf('\nChecking Point ID #6\n');
     fprintf('\tObserved in %d frames.\n', pt.count);
-    
     obs = pt.observations{1};
-    fprintf('\tFirst obs: Frame %d at pixels [%.2f, %.2f]\n', ...
-            obs.seq_num, obs.uv(1), obs.uv(2));
+    fprintf('\tFirst obs: Frame %d at pixels [%.2f, %.2f]\n', obs.seq_num, obs.uv(1), obs.uv(2));
     fprintf('\tRobot Odom at that time: [%.4f, %.4f, %.4f]\n', obs.odom_pose);
-
     obs = pt.observations{pt.count};
-    fprintf('\tLast obs: Frame %d at pixels [%.2f, %.2f]\n', ...
-            obs.seq_num, obs.uv(1), obs.uv(2));
+    fprintf('\tLast obs: Frame %d at pixels [%.2f, %.2f]\n', obs.seq_num, obs.uv(1), obs.uv(2));
     fprintf('\tRobot Odom at that time: [%.4f, %.4f, %.4f]\n', obs.odom_pose);
-
 end
-
 
 world_gt_map = read_world_data("data/world.dat");
 
-
-disp("Triangulating Points - method 1");
-map_estimate = triangulate1(meas_data_db, cam_data.T, cam_data.K, cam_data.z_near, cam_data.z_far);
-
-disp("Evaluating Map Quality");
-
-% We want to compute the whole RMSE
-
-squared_error_sum = 0;
-count_evaluated = 0;
-
-estimated_ids = cell2mat(keys(map_estimate));
-gt_points = [];
-est_points = [];
-
-for i = 1:length(estimated_ids)
-    id = estimated_ids(i);
-    
-    % Only evaluate if we have ground truth for this ID
-    if isKey(world_gt_map, id)
-        p_est = map_estimate(id);
-        p_gt = world_gt_map(id);
-
-        if isempty(p_est)
-            continue;
-        end
-        
-        % Accumulate error
-        diff = p_est - p_gt;
-        squared_error_sum = squared_error_sum + sum(diff.^2);
-        count_evaluated = count_evaluated + 1;
-        
-        % Store for plotting
-        gt_points(:, end+1) = p_gt;
-        est_points(:, end+1) = p_est;
-    end
-end
-
-if count_evaluated > 0
-    rmse = sqrt(squared_error_sum / count_evaluated);
-    fprintf('\n');
-    fprintf('Map RMSE: %.4f meters\n', rmse);
-    fprintf('Evaluated %d points.\n', count_evaluated);
-else
-    warning('No overlapping points found between Estimate and GT!');
-end
-
-%%%%%%%%%%
-% Visualization 
-%%%%%%%%%%
-
-draw_3D_points(est_points, gt_points, rmse);
-
-
-
-%%%%%%%%%%%%%
-% Triang 2
-%%%%%%%%%%%%%
-disp("Triangulating Points - method 2");
-map_estimate = triangulate2(meas_data_db, cam_data.T, cam_data.K, cam_data.z_near, cam_data.z_far);
-
-disp("Preparing arrays for evaluation and solver...");
-[XR_guess, XL_guess, Zr, pose_associations, Zp, projection_associations, landmark_ids_array, num_poses, num_landmarks] = ...
-     prepare_solver_data(map_estimate, traj_data, meas_data_db);
-
-disp("--- INITIAL TRAJECTORY (NEW) EVALUATION ---");
-[trans_rmse_initial, rot_rmse_initial] = evaluate_traj(XR_guess, traj_data);
-
-disp("\n--- INITIAL MAP EVALUATION (NEW) ---");
-[map_rmse_initial, est_pts_initial, gt_pts_initial] = ...
-             evaluate_map(XL_guess, landmark_ids_array, world_gt_map);
-
-
-
-disp("\n\nEvaluating Map Quality (OLD)");
-% We want to compute the whole RMSE
-squared_error_sum = 0;
-count_evaluated = 0;
-
-estimated_ids = cell2mat(keys(map_estimate));
-gt_points = [];
-est_points = [];
-
-for i = 1:length(estimated_ids)
-    id = estimated_ids(i);
-    
-    % Only evaluate if we have ground truth for this ID
-    if isKey(world_gt_map, id)
-        p_est = map_estimate(id);
-        p_gt = world_gt_map(id);
-
-        if isempty(p_est)
-            continue;
-        end
-        
-        % Accumulate error
-        diff = p_est - p_gt;
-        squared_error_sum = squared_error_sum + sum(diff.^2);
-        count_evaluated = count_evaluated + 1;
-        
-        % Store for plotting
-        gt_points(:, end+1) = p_gt;
-        est_points(:, end+1) = p_est;
-    end
-end
-
-if count_evaluated > 0
-    rmse = sqrt(squared_error_sum / count_evaluated);
-    fprintf('\n');
-    fprintf('Map RMSE: %.4f meters\n', rmse);
-    fprintf('Evaluated %d points.\n', count_evaluated);
-else
-    warning('No overlapping points found between Estimate and GT!');
-end
-
-%%%%%%%%%%
-% Visualization 
-%%%%%%%%%%
-
-draw_3D_points(est_points, gt_points, rmse);
-
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% BUNDLE ADJUSTMENT
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-addpath("BundleAdjustment");
-
-disp('');
-disp('=== Bundle Adjustment ===');
-
-% Prepare solver arrays from triangulate2 result
-[XR_guess, XL_guess, Zr, pose_associations, Zp, projection_associations, ...
- landmark_ids_array, num_poses, num_landmarks] = ...
-    prepare_solver_data(map_estimate, traj_data, meas_data_db);
-
-% Initial evaluation (odometry + triangulated map)
-disp('--- Initial trajectory (odometry) ---');
-evaluate_traj(XR_guess, traj_data);
-
-disp('--- Initial map (triangulation 2) ---');
-[rmse_map_initial, est_pts_initial, gt_pts_initial] = ...
-    evaluate_map(XL_guess, landmark_ids_array, world_gt_map);
-
-% Run Gauss-Newton BA
-num_iterations        = 30;
+% Shared BA parameters
+num_iterations        = 50;     % upper bound, BA stops earlier on convergence
+convergence_tol       = 1e-5;   % stop when |chi2 change| < tol * chi2
 kernel_threshold_proj = 1000;   % pixels^2
 kernel_threshold_pose = 1.0;    % flattened-matrix units
-pose_weight           = 1000;   % information weight on odometry term vs projection term
+pose_weight           = 1000;   % odometry vs projection information balance
+outlier_threshold     = 0.5;    % meters, landmark counted as outlier above this
 
-disp('Running Bundle Adjustment');
-[XR_opt, XL_opt, chi_stats, num_inliers_stats] = bundle_adjustment( ...
-    XR_guess, XL_guess, Zp, projection_associations, Zr, pose_associations, ...
-    num_poses, num_landmarks, ...
-    num_iterations, kernel_threshold_proj, kernel_threshold_pose, pose_weight, ...
-    cam_data.width, cam_data.height, cam_data.K, cam_data.T);
+% Storage for convergence curves (one row per method)
+chi_all = nan(3, num_iterations);
+inl_all = nan(3, num_iterations);
 
-% Final evaluation
+% Storage for the final summary (one entry per method, in method order)
+stats = struct('name', {'Method 1', 'Method 2', 'Method 3'});
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% METHOD 1: Consecutive-pairs pairwise SVD
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('');
-disp('--- Final trajectory (after BA) ---');
-evaluate_traj(XR_opt, traj_data);
-draw_traj(traj_data, XR_opt, 'trajectory_final');
+disp('=== Method 1: Consecutive-pairs pairwise SVD ===');
+t_start = tic;
+map1 = triangulate1(meas_data_db, cam_data.T, cam_data.K, cam_data.z_near, cam_data.z_far);
+stats(1).t_tri = toc(t_start);
 
-disp('--- Final map (after BA) ---');
-[rmse_map_ba, est_pts_ba, gt_pts_ba] = ...
-    evaluate_map(XL_opt, landmark_ids_array, world_gt_map);
+[XR1, XL1, Zr, pose_assoc, Zp1, proj_assoc1, ids1, num_poses, num_lm1] = ...
+    prepare_solver_data(map1, traj_data, meas_data_db);
 
-draw_3D_points(est_pts_ba, gt_pts_ba, rmse_map_ba);
+disp('--- Initial (odometry + triangulation 1) ---');
+evaluate_traj(XR1, traj_data);
+[rmse1_pre, ep1_pre, gp1_pre, err1_pre] = evaluate_map(XL1, ids1, world_gt_map, outlier_threshold);
+draw_3D_points(ep1_pre, gp1_pre, rmse1_pre, 'landmarks_method1_pre_ba');
 
-% Convergence plot
-figure;
+disp('Running Bundle Adjustment (method 1)');
+t_start = tic;
+[XR1_opt, XL1_opt, chi1, inl1, H1_initial, stats(1).iters] = bundle_adjustment( ...
+    XR1, XL1, Zp1, proj_assoc1, Zr, pose_assoc, num_poses, num_lm1, ...
+    num_iterations, kernel_threshold_proj, kernel_threshold_pose, pose_weight, ...
+    cam_data.width, cam_data.height, cam_data.K, cam_data.T, convergence_tol);
+stats(1).t_ba = toc(t_start);
+
+disp('--- Final (after BA, method 1) ---');
+evaluate_traj(XR1_opt, traj_data);
+[rmse1_ba, ep1_ba, gp1_ba, err1_ba, eval_ids1] = evaluate_map(XL1_opt, ids1, world_gt_map, outlier_threshold);
+draw_3D_points(ep1_ba, gp1_ba, rmse1_ba, 'landmarks_method1_post_ba', [0 0.55 0]);
+draw_traj(traj_data, XR1_opt, 'trajectory_method1_post_ba');
+chi_all(1, :) = chi1;
+inl_all(1, :) = inl1;
+stats(1).err_pre = err1_pre;
+stats(1).err_ba  = err1_ba;
+stats(1).ids     = eval_ids1;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% METHOD 3: Ray intersection (all frames)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+disp('');
+disp('=== Method 3: Ray-intersection triangulation ===');
+t_start = tic;
+map3 = triangulate3(meas_data_db, cam_data.T, cam_data.K, cam_data.z_near, cam_data.z_far);
+stats(3).t_tri = toc(t_start);
+
+[XR3, XL3, Zr, pose_assoc, Zp3, proj_assoc3, ids3, num_poses, num_lm3] = ...
+    prepare_solver_data(map3, traj_data, meas_data_db);
+
+disp('--- Initial (odometry + triangulation 3) ---');
+evaluate_traj(XR3, traj_data);
+[rmse3_pre, ep3_pre, gp3_pre, err3_pre] = evaluate_map(XL3, ids3, world_gt_map, outlier_threshold);
+draw_3D_points(ep3_pre, gp3_pre, rmse3_pre, 'landmarks_method3_pre_ba');
+
+disp('Running Bundle Adjustment (method 3)');
+t_start = tic;
+[XR3_opt, XL3_opt, chi3, inl3, H3_initial, stats(3).iters] = bundle_adjustment( ...
+    XR3, XL3, Zp3, proj_assoc3, Zr, pose_assoc, num_poses, num_lm3, ...
+    num_iterations, kernel_threshold_proj, kernel_threshold_pose, pose_weight, ...
+    cam_data.width, cam_data.height, cam_data.K, cam_data.T, convergence_tol);
+stats(3).t_ba = toc(t_start);
+
+disp('--- Final (after BA, method 3) ---');
+evaluate_traj(XR3_opt, traj_data);
+[rmse3_ba, ep3_ba, gp3_ba, err3_ba, eval_ids3] = evaluate_map(XL3_opt, ids3, world_gt_map, outlier_threshold);
+draw_3D_points(ep3_ba, gp3_ba, rmse3_ba, 'landmarks_method3_post_ba', [0 0.55 0]);
+draw_traj(traj_data, XR3_opt, 'trajectory_method3_post_ba');
+chi_all(3, :) = chi3;
+inl_all(3, :) = inl3;
+stats(3).err_pre = err3_pre;
+stats(3).err_ba  = err3_ba;
+stats(3).ids     = eval_ids3;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% METHOD 2: All-pairs pairwise SVD (best)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+disp('');
+disp('=== Method 2: All-pairs pairwise SVD ===');
+t_start = tic;
+map2 = triangulate2(meas_data_db, cam_data.T, cam_data.K, cam_data.z_near, cam_data.z_far);
+stats(2).t_tri = toc(t_start);
+
+[XR2, XL2, Zr, pose_assoc, Zp2, proj_assoc2, ids2, num_poses, num_lm2] = ...
+    prepare_solver_data(map2, traj_data, meas_data_db);
+
+disp('--- Initial (odometry + triangulation 2) ---');
+evaluate_traj(XR2, traj_data);
+[rmse2_pre, ep2_pre, gp2_pre, err2_pre] = evaluate_map(XL2, ids2, world_gt_map, outlier_threshold);
+draw_3D_points(ep2_pre, gp2_pre, rmse2_pre, 'landmarks_method2_pre_ba');
+
+disp('Running Bundle Adjustment (method 2)');
+t_start = tic;
+[XR2_opt, XL2_opt, chi2, inl2, H2_initial, stats(2).iters] = bundle_adjustment( ...
+    XR2, XL2, Zp2, proj_assoc2, Zr, pose_assoc, num_poses, num_lm2, ...
+    num_iterations, kernel_threshold_proj, kernel_threshold_pose, pose_weight, ...
+    cam_data.width, cam_data.height, cam_data.K, cam_data.T, convergence_tol);
+stats(2).t_ba = toc(t_start);
+
+disp('--- Final (after BA, method 2) ---');
+evaluate_traj(XR2_opt, traj_data);
+[rmse2_ba, ep2_ba, gp2_ba, err2_ba, eval_ids2] = evaluate_map(XL2_opt, ids2, world_gt_map, outlier_threshold);
+draw_3D_points(ep2_ba, gp2_ba, rmse2_ba, 'landmarks_method2_post_ba', [0 0.55 0]);
+draw_traj(traj_data, XR2_opt, 'trajectory_method2_post_ba');
+chi_all(2, :) = chi2;
+inl_all(2, :) = inl2;
+stats(2).err_pre = err2_pre;
+stats(2).err_ba  = err2_ba;
+stats(2).ids     = eval_ids2;
+
+% H matrix sparsity patterns (iteration 1). The block structure follows the
+% data associations, but the exact entries depend on the initial guess:
+% projections behind the camera or outside the image are skipped.
+draw_H_sparsity(H1_initial, num_poses, num_lm1, 'method 1', 'H_sparsity_method1');
+draw_H_sparsity(H2_initial, num_poses, num_lm2, 'method 2', 'H_sparsity_method2');
+draw_H_sparsity(H3_initial, num_poses, num_lm3, 'method 3', 'H_sparsity_method3');
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Convergence comparison plot
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+figure('Name', 'BA Convergence', 'NumberTitle', 'off');
+last_iter = max([stats.iters]);
+iters = 1:last_iter;
+
+% Log scale: the final chi2 values differ by orders of magnitude between
+% methods, which a linear axis flattens to zero after the first few iterations.
 subplot(2,1,1);
-plot(1:num_iterations, chi_stats, 'b-o', 'LineWidth', 1.5);
-xlabel('Iteration'); ylabel('chi2'); title('BA convergence: chi2'); grid on;
+hold on; grid on;
+plot(iters, chi_all(1, iters), 'b-o', 'LineWidth', 1.5);
+plot(iters, chi_all(3, iters), 'g-s', 'LineWidth', 1.5);
+plot(iters, chi_all(2, iters), 'r-^', 'LineWidth', 1.5);
+set(gca, 'yscale', 'log');
+xlim([1, last_iter]);
+xlabel('Iteration'); ylabel('chi2 (proj + pose)');
+title('BA convergence: total chi2 (log scale)');
+legend('Method 1', 'Method 3', 'Method 2', 'Location', 'northeast');
+
 subplot(2,1,2);
-plot(1:num_iterations, num_inliers_stats, 'r-o', 'LineWidth', 1.5);
-xlabel('Iteration'); ylabel('Inliers'); title('BA convergence: inliers'); grid on;
+hold on; grid on;
+plot(iters, inl_all(1, iters), 'b-o', 'LineWidth', 1.5);
+plot(iters, inl_all(3, iters), 'g-s', 'LineWidth', 1.5);
+plot(iters, inl_all(2, iters), 'r-^', 'LineWidth', 1.5);
+xlim([1, last_iter]);
+xlabel('Iteration'); ylabel('Inliers');
+title('BA convergence: inliers');
+legend('Method 1', 'Method 3', 'Method 2', 'Location', 'southeast');
+
+try
+    print(gcf, 'figures/ba_convergence.png', '-dpng', '-r150');
+    fprintf('Figure saved to: figures/ba_convergence.png\n');
+catch err
+    fprintf('Warning: could not save figure (%s)\n', err.message);
+end
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Landmark error vs number of observations
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+for m = 1:3
+    stats(m).num_obs = zeros(size(stats(m).ids));
+    for k = 1:numel(stats(m).ids)
+        entry = meas_data_db(int32(stats(m).ids(k)));
+        stats(m).num_obs(k) = entry.count;
+    end
+end
+draw_error_vs_obs({stats.err_ba}, {stats.num_obs}, ...
+                  {'Method 1 (consecutive DLT)', 'Method 2 (all-pairs DLT)', 'Method 3 (ray intersection)'}, ...
+                  [0 0 1; 1 0 0; 0 0.6 0], outlier_threshold, 'landmark_error_vs_obs');
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Summary
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+fprintf('\n=== Summary (landmark errors in m, times in s) ===\n');
+fprintf('%-9s | %9s %9s | %9s %9s %9s %9s %9s | %5s | %8s %8s %8s\n', ...
+        'Method', 'RMSE pre', 'med pre', 'RMSE BA', 'med BA', 'p90 BA', 'max BA', ...
+        sprintf('>%.1fm', outlier_threshold), 'iters', 't_tri', 't_BA', 't_BA/it');
+for m = 1:3
+    s = stats(m);
+    fprintf('%-9s | %9.4f %9.4f | %9.4f %9.4f %9.4f %9.4f %9d | %5d | %8.1f %8.1f %8.1f\n', ...
+            s.name, sqrt(mean(s.err_pre.^2)), median(s.err_pre), ...
+            sqrt(mean(s.err_ba.^2)), median(s.err_ba), quantile(s.err_ba, 0.9), max(s.err_ba), ...
+            sum(s.err_ba > outlier_threshold), s.iters, s.t_tri, s.t_ba, s.t_ba / s.iters);
+end

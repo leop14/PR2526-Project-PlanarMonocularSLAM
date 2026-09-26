@@ -9,6 +9,13 @@ function draw_traj(traj_data, XR_est, save_name)
     % Create a new figure
     figure(1); % Force figure 1
     clf;
+    % Wide enough that the legend beside the axes doesn't squeeze the plot.
+    % The saved size is fixed through the paper size (6 x 3.75 in at -r150 =
+    % 900 x 562 px): figure 1 is reused for every trajectory, and its on-screen
+    % size is not reliable, so the image size must not depend on it.
+    set(gcf, 'Position', [100, 100, 900, 560]);
+    set(gcf, 'PaperUnits', 'inches', 'PaperPositionMode', 'manual', ...
+             'PaperPosition', [0, 0, 6, 3.75]);
     hold on;
     grid on;
     axis equal; % Essential to preserve real-world geometry
@@ -24,7 +31,7 @@ function draw_traj(traj_data, XR_est, save_name)
                 'b-', 'LineWidth', 2);
 
     handles = [h_odom, h_gt];
-    labels = {'Odometry (Noisy)', 'Ground Truth'};
+    labels = {'Odometry', 'Ground Truth'};
 
     % Optionally overlay the estimated (e.g. post-BA) trajectory
     if nargin > 1 && ~isempty(XR_est)
@@ -33,7 +40,8 @@ function draw_traj(traj_data, XR_est, save_name)
         for i = 1:num_poses
             est_xy(i, :) = XR_est(1:2, 4, i)';
         end
-        h_est = plot(est_xy(:,1), est_xy(:,2), 'g-', 'LineWidth', 1.5);
+        % Same style as the odometry (dashed line with dots), in green
+        h_est = plot(est_xy(:,1), est_xy(:,2), 'g--.', 'LineWidth', 1, 'MarkerSize', 8);
         handles(end+1) = h_est;
         labels{end+1} = 'Estimated';
     end
@@ -51,7 +59,9 @@ function draw_traj(traj_data, XR_est, save_name)
     xlabel('X Position');
     ylabel('Y Position');
 
-    legend(handles, labels, 'Location', 'northwest');
+    % Outside the axes, in the side margin left free by 'axis equal',
+    % so it never covers the trajectory or the start/end markers
+    legend(handles, labels, 'Location', 'eastoutside', 'FontSize', 9);
 
     % Force Draw - This ensures the graphic processes before the script ends/crashes
     drawnow;

@@ -1,33 +1,38 @@
 
-function draw_3D_points(est_points, gt_points, rmse)
-    figure('Name', 'Map Comparison', 'NumberTitle', 'off');
-    hold on; 
-    grid on; 
+function draw_3D_points(est_points, gt_points, rmse, label, est_color)
+    if nargin < 4
+        label = sprintf('landmarks_rmse%.3f', rmse);
+    end
+    if nargin < 5
+        est_color = [1 0 0];   % default: red (pre-BA)
+    end
+
+    figure('Name', label, 'NumberTitle', 'off');
+    hold on;
+    grid on;
     axis equal;
-    view(3); % Set 3D view
 
-    % Plot Ground Truth (Green Circles)
-    if ~isempty(gt_points)
-        h_gt = plot3(gt_points(1,:), gt_points(2,:), gt_points(3,:), ...
-                    'go', 'MarkerSize', 5, 'LineWidth', 1.5);
-    end
-
-    % Plot Estimated (Red Crosses)
-    if ~isempty(est_points)
-        h_est = plot3(est_points(1,:), est_points(2,:), est_points(3,:), ...
-                    'rx', 'MarkerSize', 6, 'LineWidth', 1.5);
-    end
-
-    % Draw lines connecting GT to Estimate (Visualizing Error)
-    % -> helps to see exactly which point drifted where
+    % Error lines behind markers
     for k = 1:size(gt_points, 2)
-        plot3([gt_points(1,k), est_points(1,k)], ...
-            [gt_points(2,k), est_points(2,k)], ...
-            [gt_points(3,k), est_points(3,k)], 'k-', 'Color', [0.7 0.7 0.7]);
+        plot([gt_points(1,k), est_points(1,k)], ...
+             [gt_points(2,k), est_points(2,k)], ...
+             '-', 'Color', [0.7 0.7 0.7]);
     end
 
-    title(sprintf('Map Initialization (RMSE: %.3fm)', rmse));
-    xlabel('X'); ylabel('Y'); zlabel('Z');
+    % Ground Truth: blue circles
+    if ~isempty(gt_points)
+        h_gt = plot(gt_points(1,:), gt_points(2,:), ...
+                    'bo', 'MarkerSize', 5, 'LineWidth', 1.5);
+    end
+
+    % Estimated: crosses in est_color
+    if ~isempty(est_points)
+        h_est = plot(est_points(1,:), est_points(2,:), ...
+                     'x', 'Color', est_color, 'MarkerSize', 5, 'LineWidth', 1.5);
+    end
+
+    title(sprintf('%s  (RMSE: %.3fm)', strrep(label,'_',' '), rmse));
+    xlabel('X (m)'); ylabel('Y (m)');
     if exist('h_gt', 'var') && exist('h_est', 'var')
         legend([h_gt, h_est], 'Ground Truth', 'Estimated', 'Location', 'northwest');
     end
@@ -36,7 +41,7 @@ function draw_3D_points(est_points, gt_points, rmse)
     if ~exist('figures', 'dir')
         mkdir('figures');
     end
-    filename = sprintf('figures/map_comparison_rmse%.3f.png', rmse);
+    filename = sprintf('figures/%s.png', label);
     try
         print(gcf, filename, '-dpng', '-r150');
         fprintf('Figure saved to: %s\n', filename);
