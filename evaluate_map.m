@@ -1,10 +1,9 @@
 
 function [rmse_opt, est_points, gt_points, errors, eval_ids] = evaluate_map(XL_opt, landmark_ids_array, world_gt_map, outlier_threshold)
-    % Evaluates a dense 3xN map array against the ground truth dictionary.
-    % errors(k) is the Euclidean error of the k-th evaluated landmark, whose
-    % dataset ID is eval_ids(k) (same column order as est_points/gt_points).
-    % Landmarks farther than outlier_threshold from their GT are counted as
-    % outliers in the printed summary.
+    % Compares the estimated landmarks (3xN) with the ground truth.
+    % errors(k) is the distance from GT of the landmark with ID eval_ids(k)
+    % (same order as the columns of est_points and gt_points).
+    % Landmarks with error above outlier_threshold are counted as outliers.
 
     if nargin < 4
         outlier_threshold = 0.5;   % meters
@@ -36,7 +35,7 @@ function [rmse_opt, est_points, gt_points, errors, eval_ids] = evaluate_map(XL_o
 
     if ~isempty(errors)
         rmse_opt = sqrt(mean(errors.^2));
-        fprintf('Optimized Map RMSE: %.4f meters\n', rmse_opt);
+        fprintf('Map RMSE: %.4f meters\n', rmse_opt);
         fprintf('Evaluated %d points.\n', numel(errors));
         fprintf('Error median: %.4f m | p90: %.4f m | max: %.4f m | > %.2f m: %d\n', ...
                 median(errors), quantile(errors, 0.9), max(errors), ...

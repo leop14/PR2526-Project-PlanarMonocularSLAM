@@ -1,9 +1,7 @@
 
 function world_map = triangulate1(meas_db, T_camera_robot, K, z_near, z_far)
-    % Triangulating pairwise:
-    % i.   Extracting pairs of observations of same ID point
-    % ii.  Triangulating each pair independently
-    % iii. Merging the duplicate 3D points for the same ID
+    % Method 1: for each landmark, triangulate every pair of consecutive
+    % observations with DLT, then average the valid estimates.
 
     % Initializing the output map (ID -> [x; y; z])
     world_map = containers.Map('KeyType', 'int32', 'ValueType', 'any');
@@ -33,15 +31,14 @@ function world_map = triangulate1(meas_db, T_camera_robot, K, z_near, z_far)
             % Attempt to triangulate this specific pair
             X_candidate = single_point_triangulation(obs1, obs2, T_camera_robot, K, z_near, z_far);
 
-            % Only keep valid results (not empty, not infinite)
+            % empty means the pair was rejected
             if ~isempty(X_candidate)
                 candidates(:, end+1) = X_candidate;
             end
         end
 
-        % Merging duplicates (Average the position)
+        % Average of all the pair estimates
         if ~isempty(candidates)
-            % Compute centroid (mean along rows)
             X_final = mean(candidates, 2);
             world_map(point_id) = X_final;
         end
@@ -61,7 +58,7 @@ function X = single_point_triangulation(obs1, obs2, T_camera_robot, K, z_near, z
     P1 = get_projection_matrix(obs1, T_camera_robot, K);
     P2 = get_projection_matrix(obs2, T_camera_robot, K);
 
-    % Formulating Linear System (4x4 matrix for 2 vies)
+    % Linear system A*X = 0 (4x4, two rows per view):
     % u1 * (P1_row3 * X) - (P1_row1 * X) = 0
     % v1 * (P1_row3 * X) - (P1_row2 * X) = 0
     % ...
@@ -80,10 +77,9 @@ function X = single_point_triangulation(obs1, obs2, T_camera_robot, K, z_near, z
     X_hom = V(:, end);
     X = X_hom(1:3) / X_hom(4);
 
-    % Reject points whose depth in either camera falls outside the
-    % sensor's [z_near, z_far) range.
-    % NOTE: use the de-homogenized X (not raw X_hom) so the depth has the
-    % correct sign regardless of SVD's arbitrary sign on the null vector.
+    % Reject the point if its depth in one of the two cameras is outside
+    % [z_near, z_far). We use the dehomogenized X, since the sign of the
+    % SVD solution is arbitrary.
     depth1 = X_cam_depth(P1, [X; 1]);
     depth2 = X_cam_depth(P2, [X; 1]);
     if ~in_range(depth1, z_near, z_far) || ~in_range(depth2, z_near, z_far)
@@ -91,7 +87,7 @@ function X = single_point_triangulation(obs1, obs2, T_camera_robot, K, z_near, z
         return;
     end
 
-    % XY outlier rejection: matches the reference pairwise filter.
+    % Too far from the origin: rays almost parallel, not a real point
     if norm(X(1:2)) > 50
         X = [];
     end
@@ -108,8 +104,8 @@ function P = get_projection_matrix(obs, T_camera_robot, K)
 end
 
 function depth = X_cam_depth(P, X_hom)
-    % P's third row is unscaled by K (K's last row is [0 0 1]), so this is
-    % the raw camera-frame Z depth, not a pixel-homogeneous coordinate.
+    % K's last row is [0 0 1], so the third component is the depth
+    % in the camera frame
     p_cam = P * X_hom;
     depth = p_cam(3);
 end

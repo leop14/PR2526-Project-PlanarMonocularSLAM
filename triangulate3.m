@@ -1,29 +1,16 @@
 
 function world_map = triangulate3(meas_db, T_camera_robot, K, z_near, z_far)
-    % Multi-view triangulation via orthographic ray-intersection (least-squares).
+    % Method 3: least-squares intersection of all the rays of a landmark.
     %
-    % For each landmark observed in N frames, each observation defines a 3-D
-    % ray from the camera centre into world space.  The 3-D point p that
-    % minimises the sum of squared perpendicular distances to all rays is the
-    % solution of the 3x3 linear system
+    % Each observation gives a ray from the camera centre o_i with unit
+    % direction d_i (world frame). The point closest to all the rays solves
     %
     %   M * p = b,    M = sum_i (I - d_i*d_i'),    b = sum_i (I - d_i*d_i') * o_i
     %
-    % where o_i is the i-th camera centre and d_i is the unit ray direction in
-    % world frame.
-    %
-    % Compared with SVD-DLT this formulation:
-    %   - Produces a Euclidean result directly (no homogeneous de-homogenisation
-    %     or sign ambiguity).
-    %   - Is numerically stable for mixed near/far observations.
-    %
-    % Filter: points whose XY world distance from origin exceeds 50 m are
-    % discarded as degenerate (matches the reference implementation's only
-    % filter on the multi-view path).
-    %
-    % Note: the ray-intersection approach requires no z_near / z_far depth
-    % check (unlike SVD-DLT which can produce sign-flipped estimates).
-    % Those parameters are kept in the signature for interface compatibility.
+    % The only filter is the 50 m one. There is no depth check, so a
+    % landmark can end up behind the cameras when its rays are almost
+    % parallel. z_near and z_far are not used, they are only there to keep
+    % the same signature as the other two methods.
 
     world_map = containers.Map('KeyType', 'int32', 'ValueType', 'any');
     landmark_ids = cell2mat(keys(meas_db));
@@ -75,15 +62,14 @@ function x_world = ray_intersection(point_struct, T_camera_robot, invK)
         d_cam = d_cam / norm(d_cam);        % unit ray in camera frame
         d_i   = R_wc * d_cam;              % unit ray in world frame
 
-        P_orth = I3 - d_i * d_i';          % projects onto plane perpendicular to ray
+        P_orth = I3 - d_i * d_i';          % projection onto the plane orthogonal to the ray
         M = M + P_orth;
         b = b + P_orth * o_i;
     end
 
     x_world = M \ b;
 
-    % XY outlier rejection: >50 m from world origin means the rays were
-    % nearly parallel (degenerate geometry), not a real landmark.
+    % Too far from the origin: rays almost parallel, not a real landmark
     if norm(x_world(1:2)) > 50
         x_world = [];
     end

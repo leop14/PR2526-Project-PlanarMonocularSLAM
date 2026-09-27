@@ -1,6 +1,7 @@
 function [rmse_translation, rmse_rotation] = evaluate_traj(XR_est, traj_data)
-    % Evaluates the estimated trajectory against the ground truth
-    % using relative SE(2) pose errors.
+    % Relative pose error: for each pair of consecutive poses, compare the
+    % estimated relative motion with the ground truth one. Returns the RMSE
+    % of the translation and rotation errors over all pairs.
 
     num_poses = size(XR_est, 3);
     sum_trans_error_sq = 0;

@@ -5,9 +5,7 @@ clc
 addpath("data_read");
 addpath("BundleAdjustment");
 
-% "qt" renders via OpenGL/libGL, which has no GPU to talk to under WSL and
-% silently produces empty figures. "gnuplot" renders straight to file
-% without touching libGL/X11, so figure saving works headless.
+% gnuplot instead of qt: under WSL qt needs OpenGL and saves empty figures
 graphics_toolkit("gnuplot");
 
 cam_data    = read_camera_data("data/camera.dat");
@@ -15,7 +13,7 @@ traj_data   = read_traj_data("data/trajectory.dat");
 draw_traj(traj_data, [], 'trajectory_odometry');
 meas_data_db = read_meas_data("data");
 
-% Spot-check: verify a specific point is read correctly
+% Quick check that the measurements are read correctly (landmark 6)
 if isKey(meas_data_db, 6)
     pt = meas_data_db(6);
     fprintf('\nChecking Point ID #6\n');
@@ -30,27 +28,27 @@ end
 
 world_gt_map = read_world_data("data/world.dat");
 
-% Shared BA parameters
-num_iterations        = 50;     % upper bound, BA stops earlier on convergence
-convergence_tol       = 1e-5;   % stop when |chi2 change| < tol * chi2
+% BA parameters, the same for all three methods
+num_iterations        = 50;     % max iterations, BA usually stops earlier
+convergence_tol       = 1e-5;   % stop when chi2 changes by less than this (relative)
 kernel_threshold_proj = 1000;   % pixels^2
-kernel_threshold_pose = 1.0;    % flattened-matrix units
-pose_weight           = 1000;   % odometry vs projection information balance
-outlier_threshold     = 0.5;    % meters, landmark counted as outlier above this
+kernel_threshold_pose = 1.0;
+pose_weight           = 1000;   % weight of odometry w.r.t. projections
+outlier_threshold     = 0.5;    % [m] landmarks farther than this from GT are outliers
 
-% Storage for convergence curves (one row per method)
+% chi2 and inliers per iteration, one row per method
 chi_all = nan(3, num_iterations);
 inl_all = nan(3, num_iterations);
 
-% Storage for the final summary (one entry per method, in method order)
+% results for the summary table at the end
 stats = struct('name', {'Method 1', 'Method 2', 'Method 3'});
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% METHOD 1: Consecutive-pairs pairwise SVD
+% METHOD 1: Consecutive-pairs DLT
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('');
-disp('=== Method 1: Consecutive-pairs pairwise SVD ===');
+disp('=== Method 1: Consecutive-pairs DLT ===');
 t_start = tic;
 map1 = triangulate1(meas_data_db, cam_data.T, cam_data.K, cam_data.z_near, cam_data.z_far);
 stats(1).t_tri = toc(t_start);
@@ -84,10 +82,10 @@ stats(1).ids     = eval_ids1;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% METHOD 3: Ray intersection (all frames)
+% METHOD 3: Ray intersection
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('');
-disp('=== Method 3: Ray-intersection triangulation ===');
+disp('=== Method 3: Ray intersection ===');
 t_start = tic;
 map3 = triangulate3(meas_data_db, cam_data.T, cam_data.K, cam_data.z_near, cam_data.z_far);
 stats(3).t_tri = toc(t_start);
@@ -121,10 +119,10 @@ stats(3).ids     = eval_ids3;
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% METHOD 2: All-pairs pairwise SVD (best)
+% METHOD 2: All-pairs DLT
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('');
-disp('=== Method 2: All-pairs pairwise SVD ===');
+disp('=== Method 2: All-pairs DLT ===');
 t_start = tic;
 map2 = triangulate2(meas_data_db, cam_data.T, cam_data.K, cam_data.z_near, cam_data.z_far);
 stats(2).t_tri = toc(t_start);
@@ -156,9 +154,7 @@ stats(2).err_pre = err2_pre;
 stats(2).err_ba  = err2_ba;
 stats(2).ids     = eval_ids2;
 
-% H matrix sparsity patterns (iteration 1). The block structure follows the
-% data associations, but the exact entries depend on the initial guess:
-% projections behind the camera or outside the image are skipped.
+% Sparsity of H at the first iteration, for each method
 draw_H_sparsity(H1_initial, num_poses, num_lm1, 'method 1', 'H_sparsity_method1');
 draw_H_sparsity(H2_initial, num_poses, num_lm2, 'method 2', 'H_sparsity_method2');
 draw_H_sparsity(H3_initial, num_poses, num_lm3, 'method 3', 'H_sparsity_method3');
@@ -171,8 +167,7 @@ figure('Name', 'BA Convergence', 'NumberTitle', 'off');
 last_iter = max([stats.iters]);
 iters = 1:last_iter;
 
-% Log scale: the final chi2 values differ by orders of magnitude between
-% methods, which a linear axis flattens to zero after the first few iterations.
+% log scale, otherwise after a few iterations all curves look flat at zero
 subplot(2,1,1);
 hold on; grid on;
 plot(iters, chi_all(1, iters), 'b-o', 'LineWidth', 1.5);

@@ -1,9 +1,9 @@
 
 function draw_error_vs_obs(errors_list, num_obs_list, labels, colors, outlier_threshold, save_name)
-    % Scatter of per-landmark post-BA error (log scale) against the number of
-    % frames in which the landmark was observed, one subplot per method.
-    %   errors_list, num_obs_list: cell arrays, one 1xN vector per method
-    %   labels: cell array of method names; colors: Mx3 RGB matrix
+    % Error of each landmark after BA (log scale) vs the number of frames in
+    % which it was observed. One subplot per method.
+    % errors_list and num_obs_list are cell arrays with one vector per method,
+    % colors has one RGB row per method.
     if nargin < 6
         save_name = 'landmark_error_vs_obs';
     end

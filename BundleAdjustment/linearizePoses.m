@@ -1,7 +1,7 @@
 # linearizes the pose-pose (odometry) measurements
-# pose_weight scales the odometry term's contribution to H/b relative to the
-# projection term, since the projection chi2 is naturally orders of magnitude
-# larger and would otherwise leave the odometry constraint with no effect on the solve
+# pose_weight multiplies the odometry contribution to H and b: the projection
+# chi2 is orders of magnitude larger, so without it the odometry would have
+# basically no effect
 function [H, b, chi_tot, num_inliers] = linearizePoses(XR, XL, Zr, associations, num_poses, num_landmarks, kernel_threshold, pose_weight)
     global pose_dim;
     global landmark_dim;
@@ -30,8 +30,7 @@ function [H, b, chi_tot, num_inliers] = linearizePoses(XR, XL, Zr, associations,
         endif;
         chi_tot += chi;
 
-        % weight applied only to the H/b contribution, not to chi/inlier
-        % bookkeeping above, so reported chi2_pose stays human-readable
+        % weight only on H and b, the printed chi2 is the unweighted one
         Ji_w = sqrt(pose_weight) * Ji;
         Jj_w = sqrt(pose_weight) * Jj;
         e_w  = sqrt(pose_weight) * e;

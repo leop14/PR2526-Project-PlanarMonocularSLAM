@@ -10,7 +10,7 @@ function [is_valid, e, Jr, Jl] = projectionErrorAndJacobian(T_rob_world, p_land_
     iRc = T_cam_world(1:3,1:3)';
     itc = -iRc * T_cam_world(1:3,4);
 
-    # point prediction, in world scale (CAMERA frame)
+    # landmark in the camera frame (skip it if it is behind the camera)
     p_cam_3d = iRc * p_land_world + itc;
     if (p_cam_3d(3) < 0)
         return;
@@ -21,7 +21,7 @@ function [is_valid, e, Jr, Jl] = projectionErrorAndJacobian(T_rob_world, p_land_
     itr = -iR_rob_world * T_rob_world(1:3,4);
     p_rob = iR_rob_world * p_land_world + itr;
 
-    # Jwr: Derivative of the point in the robot frame w.r.t local SE(2) perturbation [dx, dy, dtheta]
+    # derivative of the point in the robot frame w.r.t. the local SE(2) perturbation [dx, dy, dtheta]
     J_prob_pose = [-1,  0,  p_rob(2);
                     0, -1, -p_rob(1);
                     0,  0,  0];
@@ -30,7 +30,7 @@ function [is_valid, e, Jr, Jl] = projectionErrorAndJacobian(T_rob_world, p_land_
     iR_cam_offset = T_cam_rob(1:3,1:3)';
     Jwr = iR_cam_offset * J_prob_pose;
 
-    Jwl = iRc;     # The landmark Jacobian is just the inverse rotation of the total camera pose
+    Jwl = iRc;     # for the landmark it's just the world -> camera rotation
 
     # Projection on 2D image plane
     p_img_hom = K * p_cam_3d;

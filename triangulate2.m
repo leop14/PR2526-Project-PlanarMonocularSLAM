@@ -1,13 +1,9 @@
 
 function world_map = triangulate2(meas_db, T_camera_robot, K, z_near, z_far)
-    % Multi-view pairwise triangulation (all-pairs averaging).
-    % Tries every (i, j) pair of observations for each landmark.
-    % Each pair is solved independently with SVD-DLT; pairs whose triangulated
-    % point falls outside [z_near, z_far) in either camera, or further than
-    % 50 m from the world XY origin, are discarded.  Valid pair estimates are
-    % averaged.  Using all pairs rather than only consecutive frames gives
-    % large-baseline combinations that are much better conditioned, which is
-    % what the reference implementation does.
+    % Method 2: same as method 1 (DLT on pairs + average), but using every
+    % pair of observations and not only consecutive ones. This way we also
+    % get pairs with a large baseline, which are better conditioned.
+    % Same filters: depth in [z_near, z_far) and at most 50 m from the origin.
 
     world_map = containers.Map('KeyType', 'int32', 'ValueType', 'any');
     landmark_ids = cell2mat(keys(meas_db));
@@ -26,7 +22,7 @@ function world_map = triangulate2(meas_db, T_camera_robot, K, z_near, z_far)
         candidates = [];
         n_obs = point_struct.count;
 
-        % Precompute projection matrices once per observation (not per pair).
+        % Projection matrices computed once here, each one is used in many pairs
         P_cache = cell(n_obs, 1);
         for k = 1:n_obs
             P_cache{k} = projection_matrix(point_struct.observations{k}, T_camera_robot, K);
@@ -70,8 +66,8 @@ function X = triangulate_pair(P1, uv1, P2, uv2, z_near, z_far)
     X_hom = V(:, end);
     X = X_hom(1:3) / X_hom(4);
 
-    % Depth filter: both cameras must see the point in [z_near, z_far).
-    % Use the de-homogenized X to avoid sign ambiguity on X_hom.
+    % Depth check in both cameras (on the dehomogenized X, since the sign
+    % of the SVD solution is arbitrary)
     d1 = P1(3, 1:3) * X + P1(3, 4);
     d2 = P2(3, 1:3) * X + P2(3, 4);
     if d1 < z_near || d1 >= z_far || d2 < z_near || d2 >= z_far
@@ -79,7 +75,7 @@ function X = triangulate_pair(P1, uv1, P2, uv2, z_near, z_far)
         return;
     end
 
-    % XY outlier rejection.
+    % Too far from the origin: rays almost parallel
     if norm(X(1:2)) > 50
         X = [];
     end

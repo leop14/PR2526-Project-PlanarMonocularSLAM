@@ -1,7 +1,7 @@
 
 function draw_H_sparsity(H, num_poses, num_landmarks, label, save_name)
-    % Sparsity pattern of the BA system matrix H, with the pose/landmark
-    % boundary marked. Nothing is drawn if H is empty.
+    % Plots the sparsity pattern of H, with red lines between the pose
+    % and the landmark variables
     if isempty(H)
         return;
     end
@@ -12,7 +12,6 @@ function draw_H_sparsity(H, num_poses, num_landmarks, label, save_name)
     figure('Name', save_name, 'NumberTitle', 'off');
     spy(H);
     hold on;
-    % Dashed lines separating the pose block from the landmark block
     n = size(H, 1);
     plot([n_pose_vars, n_pose_vars] + 0.5, [0, n], 'r--', 'LineWidth', 1.5);
     plot([0, n], [n_pose_vars, n_pose_vars] + 0.5, 'r--', 'LineWidth', 1.5);

@@ -1,5 +1,7 @@
 
 function draw_3D_points(est_points, gt_points, rmse, label, est_color)
+    % Top view of estimated vs ground truth landmarks, with a grey line
+    % between each landmark and its GT position
     if nargin < 4
         label = sprintf('landmarks_rmse%.3f', rmse);
     end
@@ -12,7 +14,7 @@ function draw_3D_points(est_points, gt_points, rmse, label, est_color)
     grid on;
     axis equal;
 
-    % Error lines behind markers
+    % Error lines first, so they stay behind the markers
     for k = 1:size(gt_points, 2)
         plot([gt_points(1,k), est_points(1,k)], ...
              [gt_points(2,k), est_points(2,k)], ...
@@ -50,3 +52,4 @@ function draw_3D_points(est_points, gt_points, rmse, label, est_color)
     end
 
     drawnow;
+end

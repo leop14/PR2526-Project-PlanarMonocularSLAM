@@ -1,4 +1,7 @@
-function measurements_db = read_meas_data(meas_dir)    % Initialize a structure to hold feature tracks
+function measurements_db = read_meas_data(meas_dir)
+    % Reads all the meas-*.dat files and groups the observations by landmark:
+    % landmark ID -> struct with count and the list of its observations
+
     % Getting the list of measurements files
     pattern = fullfile(meas_dir, "meas-*.dat");
     file_list = dir(pattern);
@@ -23,12 +26,12 @@ function measurements_db = read_meas_data(meas_dir)    % Initialize a structure 
     % Values: Struct containing list of observations
     measurements_db = containers.Map('KeyType', 'int32', 'ValueType', 'any');
     
-    num_files = length(file_list);
+    num_files = length(ord_file_list);
     fprintf('Building Measurements DB from %d files\n', num_files);
-    
-    % Iterate through every measurement file
+
+    % Iterate through every measurement file, in order
     for i = 1:num_files
-        fname = fullfile(meas_dir, file_list(i).name);
+        fname = fullfile(meas_dir, ord_file_list(i).name);
         meas_file = fopen(fname, 'r');
         
         if meas_file == -1
@@ -56,7 +59,7 @@ function measurements_db = read_meas_data(meas_dir)    % Initialize a structure 
         % It returns a Cell Array 
         raw_data = textscan(meas_file, 'point %d %d %f %f');
     
-        fclose(meas_file);  # We've scanned all the file
+        fclose(meas_file);
 
         actual_ids = raw_data{2};
         us = raw_data{3};

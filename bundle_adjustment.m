@@ -3,23 +3,22 @@ function [XR, XL, chi_stats, num_inliers_stats, H_initial, num_iters_run] = bund
     num_poses, num_landmarks, ...
     num_iterations, kernel_threshold_proj, kernel_threshold_pose, pose_weight, ...
     img_width, img_height, K, T_cam_rob, convergence_tol)
-    % num_iterations is an upper bound: the loop stops early once the
-    % relative change of the total chi2 between two iterations drops
-    % below convergence_tol. Unused entries of chi_stats and
-    % num_inliers_stats are left as NaN.
+    % Total least squares on poses (SE(2)) and landmarks (R^3).
+    % Runs at most num_iterations, but stops as soon as chi2 changes by less
+    % than convergence_tol (relative). chi_stats / num_inliers_stats stay NaN
+    % for the iterations that were not run.
 
     addpath("BundleAdjustment");
 
     global pose_dim = 3;
     global landmark_dim = 3;
-    global projection_dim = 2;
 
     chi_stats = nan(1, num_iterations);
     num_inliers_stats = nan(1, num_iterations);
     H_initial = [];
     num_iters_run = num_iterations;
 
-    damping = 0.01;  % LM diagonal damping
+    damping = 0.01;
 
     for iter = 1:num_iterations
         % Projection factors
@@ -42,9 +41,8 @@ function [XR, XL, chi_stats, num_inliers_stats, H_initial, num_iters_run] = bund
         chi_stats(iter) = chi_p + chi_r;
         num_inliers_stats(iter) = inl_p + inl_r;
 
-        % Stopping rule: chi2 here is evaluated at the state produced by
-        % the previous update, so if it barely changed that update was
-        % already negligible and the current state is the solution.
+        % chi2 is computed on the state after the previous update: if it
+        % barely changed, that update did nothing and we can stop here
         if iter > 1 && abs(chi_stats(iter-1) - chi_stats(iter)) < convergence_tol * chi_stats(iter-1)
             num_iters_run = iter;
             printf("Converged at iter %d/%d: chi2_proj=%.2f (inl %d/%d)  chi2_pose=%.4f (inl %d/%d)\n", ...
@@ -55,10 +53,10 @@ function [XR, XL, chi_stats, num_inliers_stats, H_initial, num_iters_run] = bund
             break;
         endif
 
-        % LM damping: regularize rank-deficient landmark blocks
+        % damping, helps with badly conditioned landmarks (short baselines)
         H = H + damping * eye(size(H));
 
-        % Gauge fix: anchor first pose
+        % fix the gauge by anchoring the first pose
         H(1:pose_dim, :) = 0;
         H(:, 1:pose_dim) = 0;
         H(1:pose_dim, 1:pose_dim) = eye(pose_dim);

@@ -1,6 +1,5 @@
-% computes the homogeneous transform matrix A of the pose vector v
-% A: 4x4 homogeneous transformation matrix (planar motion, z=0)
-% v: [x,y,theta]  2D pose vector
+% From a planar pose [x, y, theta] to a 4x4 homogeneous transform
+% (rotation around z, translation in the xy plane)
 function T = v2t(pose)
     tx = pose(1);
     ty = pose(2);
