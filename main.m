@@ -4,6 +4,8 @@ clc
 
 addpath("data_read");
 addpath("BundleAdjustment");
+addpath("evaluation");
+addpath("plotting");
 
 % gnuplot instead of qt: under WSL qt needs OpenGL and saves empty figures
 graphics_toolkit("gnuplot");

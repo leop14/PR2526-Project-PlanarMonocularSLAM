@@ -141,7 +141,7 @@ Method 2 is the slowest because it solves $`O(n^2)`$ pairs per landmark. Method 
 |:---:|:---:|:---:|
 | <img src="final_figures/landmarks_method1_pre_ba.png" width="300"> | <img src="final_figures/landmarks_method2_pre_ba.png" width="300"> | <img src="final_figures/landmarks_method3_pre_ba.png" width="300"> |
 
-## Bundle Adjustment  [`bundle_adjustment.m`](bundle_adjustment.m)
+## Bundle Adjustment  [`bundle_adjustment.m`](BundleAdjustment/bundle_adjustment.m)
 
 Poses and landmarks are refined jointly with an iterative Total Least Squares (Gauss-Newton with constant damping) solver, adapted from the one seen in class.
 
@@ -252,9 +252,9 @@ The **exact entries at iteration 1 differ**, because a projection that falls beh
 
 ## Evaluation
 
-- **Trajectory**  [`evaluate_traj.m`](evaluate_traj.m): for every consecutive pair of poses it computes the relative pose error, and reports the RMSE of its translation and rotation over all pairs..
-- **Map**  [`evaluate_map.m`](evaluate_map.m): the Euclidean error between each estimated landmark and its ground-truth position in `world.dat`. Besides the **RMSE**, it reports the **median**, the **max** and the **number of landmarks with error > 0.5 m**. 
-- **Error vs. observations**  [`draw_error_vs_obs.m`](draw_error_vs_obs.m): per-landmark error after BA against the number of frames in which the landmark was observed. It shows *which* landmarks fail.
+- **Trajectory**  [`evaluate_traj.m`](evaluation/evaluate_traj.m): for every consecutive pair of poses it computes the relative pose error, and reports the RMSE of its translation and rotation over all pairs..
+- **Map**  [`evaluate_map.m`](evaluation/evaluate_map.m): the Euclidean error between each estimated landmark and its ground-truth position in `world.dat`. Besides the **RMSE**, it reports the **median**, the **max** and the **number of landmarks with error > 0.5 m**. 
+- **Error vs. observations**  [`draw_error_vs_obs.m`](plotting/draw_error_vs_obs.m): per-landmark error after BA against the number of frames in which the landmark was observed. It shows *which* landmarks fail.
 - **Timings**: `main.m` times triangulation and BA with `tic`/`toc`, and prints them together with all the map metrics in a final summary table. 
 
 ## Results

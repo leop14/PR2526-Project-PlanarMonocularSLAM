@@ -8,8 +8,6 @@ function [XR, XL, chi_stats, num_inliers_stats, H_initial, num_iters_run] = bund
     % than convergence_tol (relative). chi_stats / num_inliers_stats stay NaN
     % for the iterations that were not run.
 
-    addpath("BundleAdjustment");
-
     global pose_dim = 3;
     global landmark_dim = 3;
 
