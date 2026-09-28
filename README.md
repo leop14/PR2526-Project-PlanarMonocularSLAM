@@ -5,7 +5,7 @@
 Leonardo Pitotti - 2000797
 
 
-**Probabilistic Robotics 2025/26** — Supervisors: *Prof. G. Grisetti, PhD L. De Rebotti*
+**Probabilistic Robotics 2025/26** - Supervisors: *Prof. G. Grisetti, PhDs L. De Rebotti, D. Ceriola*
 
 
 
@@ -26,7 +26,7 @@ The whole project is written in **Octave**.
 
 | File | Description | Row Format |
 |------|-------------|------------|
-| `camera.dat` | Camera intrinsics `K`, camera pose w.r.t. robot `cam_transform`, depth range `z_near`/`z_far`, image `width`/`height` | — |
+| `camera.dat` | Camera intrinsics `K`, camera pose w.r.t. robot `cam_transform`, depth range `z_near`/`z_far`, image `width`/`height` | - |
 | `trajectory.dat` | Odometry and ground-truth pose for every frame | `POSE_ID` `odom_x` `odom_y` `odom_θ` `gt_x` `gt_y` `gt_θ` |
 | `meas-XXXXX.dat` | One file per frame: sequence number, GT pose, odometry pose and the list of observed points | `point` `LOCAL_ID` `LANDMARK_ID` `col` `row` |
 | `world.dat` | Ground-truth landmark positions, **used only for evaluation** | `LANDMARK_ID` `x` `y` `z` |
@@ -44,7 +44,7 @@ The whole project is written in **Octave**.
 
 
 
-## Data Loading — [`data_read/`](data_read/)
+## Data Loading [`data_read/`](data_read/)
 
 | File | Loader | Output |
 |------|--------|--------|
@@ -57,9 +57,9 @@ Measurements are grouped **by landmark** rather than by frame: each entry of the
 
 <div align="center">
 
-| Landmark tracks | Total observations | Avg obs / landmark | Min | Max |
-|:---:|:---:|:---:|:---:|:---:|
-| 888 | 19,631 | 22.11 | 1 | 71 |
+| Landmark tracks | Total observations | Avg Obs / landmark |  Max Obs / landmark |
+|:---:|:---:|:---:|:---:|
+| 888 | 19,631 | 22.11 | 71 |
 
 </div>
 
@@ -244,7 +244,7 @@ At every iteration the two linearizers ([`linearizeProjections`](BundleAdjustmen
 The dashed lines separate the pose variables (top-left) from the landmark variables (bottom-right). The **block structure** is the same for all methods:
 - **Pose block:** block-tridiagonal, from the odometry chain.
 - **Landmark block:** block-diagonal, because landmarks are never directly connected.
-- **Off-diagonal blocks:** pose–landmark coupling, with a nonzero block only where landmark $`j`$ is observed in frame $`i`$.
+- **Off-diagonal blocks:** pose-landmark coupling, with a nonzero block only where landmark $`j`$ is observed in frame $`i`$.
 
 The **exact entries at iteration 1 differ**, because a projection that falls behind the camera or outside the image with the initial guess is skipped.
 
@@ -278,7 +278,7 @@ All three pipelines share the same initial trajectory (odometry) and the same BA
 |:---|:---:|:---:|:---:|
 | Landmark RMSE | 1.415 m | 0.279 m | 80.3% |
 | Landmark median error | 0.985 m | 0.0066 m | 99.3% |
-| Landmarks with error > 0.5 m | 715 / 793 | 3 / 793 | — |
+| Landmarks with error > 0.5 m | 715 / 793 | 3 / 793 | - |
 | Trajectory translation RMSE (relative) | 0.015390 m | 0.000201 m | 98.7% |
 | Trajectory rotation RMSE (relative) | 0.015657 rad | 0.000018 rad | 99.9% |
 
@@ -300,7 +300,7 @@ All three pipelines share the same initial trajectory (odometry) and the same BA
 |:---|:---:|:---:|:---:|
 | Landmark RMSE | 1.637 m | **0.109 m** | **93.3%** |
 | Landmark median error | 1.035 m | **0.0065 m** | 99.4% |
-| Landmarks with error > 0.5 m | 764 / 793 | **2 / 793** | — |
+| Landmarks with error > 0.5 m | 764 / 793 | **2 / 793** | - |
 | Trajectory translation RMSE (relative) | 0.015390 m | **0.000198 m** | 98.7% |
 | Trajectory rotation RMSE (relative) | 0.015657 rad | **0.000018 rad** | 99.9% |
 
@@ -322,7 +322,7 @@ All three pipelines share the same initial trajectory (odometry) and the same BA
 |:---|:---:|:---:|:---:|
 | Landmark RMSE | 4.030 m | 3.013 m | 25.2% |
 | Landmark median error | 1.394 m | 0.0067 m | 99.5% |
-| Landmarks with error > 0.5 m | 808 / 837 | 21 / 837 | — |
+| Landmarks with error > 0.5 m | 808 / 837 | 21 / 837 | - |
 | Trajectory translation RMSE (relative) | 0.015390 m | 0.000198 m | 98.7% |
 | Trajectory rotation RMSE (relative) | 0.015657 rad | 0.000018 rad | 99.9% |
 
@@ -362,12 +362,12 @@ In all three methods, the landmarks form a tight band between roughly 1 mm and 2
 | Metric | Method 1 <br> consecutive DLT | Method 2 <br> all-pairs DLT | Method 3 <br> ray intersection |
 |:---|:---:|:---:|:---:|
 | Landmarks estimated | 793 (89.3%) | 793 (89.3%) | **837 (94.3%)** |
-| Landmark RMSE — initial | **1.415 m** | 1.637 m | 4.030 m |
-| Landmark RMSE — after BA | 0.279 m | **0.109 m** | 3.013 m |
-| Landmark median — after BA | 0.0066 m | 0.0065 m | 0.0067 m |
-| Landmarks > 0.5 m — after BA | 3 | **2** | 21 |
-| Translation RMSE — after BA | 0.000201 m | **0.000198 m** | **0.000198 m** |
-| Rotation RMSE — after BA | **0.000018 rad** | **0.000018 rad** | **0.000018 rad** |
+| Landmark RMSE - initial | **1.415 m** | 1.637 m | 4.030 m |
+| Landmark RMSE - after BA | 0.279 m | **0.109 m** | 3.013 m |
+| Landmark median - after BA | 0.0066 m | 0.0065 m | 0.0067 m |
+| Landmarks > 0.5 m - after BA | 3 | **2** | 21 |
+| Translation RMSE - after BA | 0.000201 m | **0.000198 m** | **0.000198 m** |
+| Rotation RMSE - after BA | **0.000018 rad** | **0.000018 rad** | **0.000018 rad** |
 | Final χ² | 2001 | **1.09** | **1.09** |
 | BA iterations | **19** | 20 | 42 |
 | Triangulation time | 11.7 s | 41.8 s | **4.0 s** |
@@ -376,8 +376,8 @@ In all three methods, the landmarks form a tight band between roughly 1 mm and 2
 
 </div>
 
-## Conclusions
+## Some Observations
 
-- All three methods give essentially the same result for the well-observed part of the map. The differences in RMSE come from the weakly observed landmarks (few views).
+- All three methods give essentially the same result for the well-observed part of the map. The differences in RMSE come from the "weakly observed" landmarks.
 - Initial RMSE is not a good predictor of the final result. Method 1 starts with the best RMSE and ends in a worse local minimum than Method 2. Method 3 starts with by far the worst RMSE and still recovers the full trajectory.
 - **Method 2 (all-pairs DLT)** is the best pipeline. It has the lowest landmark RMSE (0.109 m), the fewest outliers (2) and a residual χ² of ~1 within 20 iterations. Averaging over all pairs includes the wide-baseline ones, so the estimate is not driven by the poorly conditioned short-baseline pairs that Method 1 relies on exclusively.
